@@ -2,12 +2,15 @@ var createLayout = require('layout-bmfont-text')
 var inherits = require('inherits')
 var createIndices = require('quad-indices')
 var buffer = require('three-buffer-vertex-data')
+
 var assign = require('object-assign')
 
 var vertices = require('./lib/vertices')
 var utils = require('./lib/utils')
 
 var Base = THREE.BufferGeometry
+var Uint16BufferAttribute = THREE.Uint16BufferAttribute
+var Float32BufferAttribute = THREE.Float32BufferAttribute
 
 module.exports = function createTextGeometry (opt) {
   return new TextGeometry(opt)
@@ -64,27 +67,31 @@ TextGeometry.prototype.update = function (opt) {
   this.visibleGlyphs = glyphs
 
   // get common vertex data
-  var positions = vertices.positions(glyphs)
-  var uvs = vertices.uvs(glyphs, texWidth, texHeight, flipY)
-  var indices = createIndices({
+  var rawPositions = vertices.positions(glyphs)
+  var rawUvs = vertices.uvs(glyphs, texWidth, texHeight, flipY)
+  var rawIndices = createIndices({
     clockwise: true,
     type: 'uint16',
     count: glyphs.length
   })
 
-  // update vertex data
-  buffer.index(this, indices, 1, 'uint16')
-  buffer.attr(this, 'position', positions, 2)
-  buffer.attr(this, 'uv', uvs, 2)
+  var indices = new Uint16BufferAttribute(rawIndices, 1, false)
+  var positions = new Float32BufferAttribute(rawPositions, 2)
+  var uvs = new Float32BufferAttribute(rawUvs, 2)
+
+  this.index = indices
+  this.setAttribute('position', positions)
+  this.setAttribute('uv', uvs)
 
   // update multipage data
   if (!opt.multipage && 'page' in this.attributes) {
     // disable multipage rendering
     this.removeAttribute('page')
   } else if (opt.multipage) {
-    var pages = vertices.pages(glyphs)
+    var rawPages = vertices.pages(glyphs)
+    var pages = new Float32BufferAttribute(rawPages, 1)
     // enable multipage rendering
-    buffer.attr(this, 'page', pages, 1)
+    this.setAttribute('page', pages)
   }
 }
 
